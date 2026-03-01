@@ -70,12 +70,6 @@ Discord downtime assistant bot for Uptime Kuma/UptimeRobot alerts.
 - SnapService is rate-limited (~2/min); failures (including `429`) are handled without crashing.
 - There are no automated tests yet; validate using simulated DOWN/UP alerts in both channels.
 
-## Public mirror policy
-
-- **GitLab** is the source-of-truth repository and includes `.github/`.
-- **GitHub** is a public mirror branch that excludes `.github/`.
-- Publish flow is scripted in `scripts/publish_github_public.sh` and documented in `docs/MIRRORING.md`.
-
 ## Security
 
 - Never commit `.env` or real tokens.
