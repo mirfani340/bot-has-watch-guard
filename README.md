@@ -1,61 +1,83 @@
-# Discord Watch Guard Bot
+# bot-has-watch-guard
 
-Python Discord bot that listens for downtime alerts from Uptime Kuma/UptimeRobot and handles Layer 4 and Layer 7 checks in separate Discord channels.
+Discord downtime assistant bot for Uptime Kuma/UptimeRobot alerts.
 
-## Features
+## What it does
 
-- Monitors 2 channels:
-	- `LAYER4_CHANNEL_ID`: runs `ping` against the extracted host
-	- `LAYER7_CHANNEL_ID`: runs `curl` resolution check, then takes screenshot
-- Detects down alerts for Uptime Kuma/UptimeRobot and ignores UP status alerts
-- Extracts URL/host from message content and embed fields
-- Creates a public thread on the alert message named `Down Alert: [Domain]`
-- Waits 5 seconds before screenshot capture for Layer 7
-- Uploads screenshot as `alert.png` in the Layer 7 thread
-- Handles SnapService errors gracefully (including rate limiting / `429`)
+- Monitors two Discord channels with different incident workflows:
+	- `LAYER4_CHANNEL_ID`: run `ping` diagnostics for host/IP alerts.
+	- `LAYER7_CHANNEL_ID`: run `curl` resolution check, then capture screenshot.
+- Parses alert text from both message content and embed parts (title/description/fields).
+- Handles DOWN signals and ignores UP notifications.
+- Creates a public thread on the alert message: `Down Alert: [target]`.
+- Mentions `Dev Admin` in the thread and reacts on the source message with `👀` and `✅` after checks.
+
+## Architecture snapshot
+
+- Entry point: `main()` in `bot.py`
+- Runtime class: `WatchGuardBot(discord.Client)`
+- Routing: `on_message()` -> `handle_layer4_alert()` or `handle_layer7_alert()`
+- External calls:
+	- `ping -c 4 -W 2 <host>`
+	- `curl -I --max-time 12 --connect-timeout 6 -L <url>`
+	- SnapService API: `https://snap.llm.kaveenk.com/api/screenshot`
 
 ## Requirements
 
 - Python 3.10+
-- A Discord bot token with permission to:
-  - Read message content
-  - Create public threads
-  - Send messages/files in threads
+- Discord bot with permissions:
+	- Read message content
+	- Create public threads
+	- Send messages/files in threads
+	- Add reactions
 - SnapService API key
 
 ## Setup
 
 1. Install dependencies:
 
-	```bash
-	pip install -r requirements.txt
-	```
+	 ```bash
+	 pip install -r requirements.txt
+	 ```
 
-2. Create your environment file:
+2. Copy env template:
 
-	```bash
-	cp .env.example .env
-	```
+	 ```bash
+	 cp .env.example .env
+	 ```
 
-3. Fill in `.env` values:
+3. Configure `.env`:
 
-	```env
-	DISCORD_TOKEN=your_discord_bot_token
-	SNAPSERVICE_KEY=your_snapservice_api_key
-	LAYER4_CHANNEL_ID=123456789012345678
-	LAYER7_CHANNEL_ID=987654321098765432
-	ENABLE_MESSAGE_CONTENT_INTENT=true
-	```
+	 ```env
+	 DISCORD_TOKEN=your_discord_bot_token
+	 SNAPSERVICE_KEY=your_snapservice_api_key
+	 LAYER4_CHANNEL_ID=123456789012345678
+	 LAYER7_CHANNEL_ID=987654321098765432
+	 ENABLE_MESSAGE_CONTENT_INTENT=true
+	 ```
 
-	- For Uptime Kuma/Uptime Robot alerts, keep `ENABLE_MESSAGE_CONTENT_INTENT=true`.
-	- Enable **Message Content Intent** in Discord Developer Portal for your bot app.
+4. Enable **Message Content Intent** in Discord Developer Portal.
 
-4. Run the bot:
+5. Run:
 
-	```bash
-	python3 bot.py
-	```
+	 ```bash
+	 python3 bot.py
+	 ```
 
-## Notes on rate limits
+## Operational notes
 
-SnapService allows only 2 screenshots/minute. When that limit is exceeded, the bot catches the error and posts a failure note in the thread instead of crashing.
+- Layer 7 applies a 5-second delay before screenshot capture.
+- SnapService is rate-limited (~2/min); failures (including `429`) are handled without crashing.
+- There are no automated tests yet; validate using simulated DOWN/UP alerts in both channels.
+
+## Public mirror policy
+
+- **GitLab** is the source-of-truth repository and includes `.github/`.
+- **GitHub** is a public mirror branch that excludes `.github/`.
+- Publish flow is scripted in `scripts/publish_github_public.sh` and documented in `docs/MIRRORING.md`.
+
+## Security
+
+- Never commit `.env` or real tokens.
+- If secrets were ever committed historically, rotate them and rewrite history before public release.
+- Report vulnerabilities via `SECURITY.md`.
